@@ -128,6 +128,7 @@ WAVE_CONT_MATCHER = re.compile(WAVE_CONT_REGEX)
 # match the single start line of a wave record
 WAVE_END_REGEX = TIMESTAMP + WHITESPACE                             # dcl controller timestamp
 WAVE_END_REGEX += 'wave: end burst'                                 # record type
+WAVE_END_REGEX += NEW_LINE
 WAVE_END_MATCHER = re.compile(WAVE_END_REGEX)
 
 # TIDE_DATA_MATCHER produces the following groups:
@@ -522,12 +523,13 @@ class PresfAbcDclParser(BufferLoadingParser):
         while data_index < raw_data_len:
             
             # Do we have a newline delimited field left?
+            print " "
+            print "---------------------------------------------------------"
             print raw_data[data_index:]
             print "@@@@"
             record_match = PRESF_RECORD_MATCHER.match(raw_data[data_index:])
-            
             if record_match:
-                
+                print "    found record"
                 # check for a metadata line
                 test_meta = METADATA_MATCHER.match(record_match.group(0))
                 if test_meta != None:
@@ -577,6 +579,8 @@ class PresfAbcDclParser(BufferLoadingParser):
                 test_wend = WAVE_END_MATCHER.match(record_match.group(0))
                 if test_wend != None:
                     print "matching WAVE END"
+                    print ":".join("{:02x}".format(ord(c)) for c in record_match.group(0))
+                    print ":".join("{:02x}".format(ord(c)) for c in test_wend.group(0))
                     print test_wend.group()
                     return_list.append((data_index, data_index + len(test_wend.group())))
                     data_index += len(test_wend.group())
@@ -584,7 +588,7 @@ class PresfAbcDclParser(BufferLoadingParser):
                     continue
     
                 print "match not found"
-                print record_match.group(0)
+                print ":".join("{:02x}".format(ord(c)) for c in record_match.group(0))
                 break
 
             else:
