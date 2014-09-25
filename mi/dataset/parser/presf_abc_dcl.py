@@ -130,6 +130,7 @@ WAVE_END_REGEX += NEW_LINE
 WAVE_END_MATCHER = re.compile(WAVE_END_REGEX)
 
 # TIDE_DATA_MATCHER produces the following groups:
+TIDE_GROUP_DCL_TIMESTAMP = 1
 TIDE_GROUP_YEAR = 2
 TIDE_GROUP_MONTH = 3
 TIDE_GROUP_DAY = 4
@@ -165,7 +166,7 @@ WAVE_END_GROUP_DCL_TIMESTAMP = 1
 # Column 2 - group number (index into raw_data)
 # Column 3 - data encoding function (conversion required - int, float, etc)
 TIDE_PARTICLE_MAP = [
-    ('dcl_controller_timestamp',    TIDE_GROUP_DATA_TIME_STRING,         str),
+    ('dcl_controller_timestamp',    TIDE_GROUP_DCL_TIMESTAMP,            str),
     ('date_time_string',            TIDE_GROUP_DATA_TIME_STRING,         str),
     ('absolute_pressure',           TIDE_GROUP_ABSOLUTE_PRESSURE,        float),
     ('pressure_temperature',        TIDE_GROUP_PRESSURE_TEMPERATURE,     float),
@@ -406,9 +407,6 @@ class PresfAbcDclParser(BufferLoadingParser):
                                           *args,
                                           **kwargs)
 
-       # Default the position within the file to the beginning.
-
-        self._read_state = {StateKey.POSITION: 0}
         self.input_file = stream_handle
         
        # Obtain the particle classes dictionary from the config data
@@ -426,11 +424,6 @@ class PresfAbcDclParser(BufferLoadingParser):
                     'Configuration missing metadata or data particle class key in particle classes dict')
  
 
-        # If there's an existing state, update to it.
-
-        if state is not None:
-            self.set_state(state)
-
     def handle_non_data(self, non_data, non_end, start):
         """
         Handle any non-data that is found in the file
@@ -439,19 +432,12 @@ class PresfAbcDclParser(BufferLoadingParser):
         # Increment the position within the file.
         # Use the _exception_callback.
         if non_data is not None and non_end <= start:
-            self._increment_position(len(non_data))
             test_meta = METADATA_MATCHER.match(non_data)
             if test_meta == None:
                 self._exception_callback(RecoverableSampleException(
                     "Found %d bytes of un-expected non-data %s" %
                     (len(non_data), non_data)))
 
-    def _increment_position(self, bytes_read):
-        """
-        Increment the position within the file.
-        @param bytes_read The number of bytes just read
-        """
-        self._read_state[StateKey.POSITION] += bytes_read
 
     def parse_chunks(self):
         """
@@ -492,7 +478,7 @@ class PresfAbcDclParser(BufferLoadingParser):
                                                      None,
                                                      chunk,
                                                      None)
-                result_particles.append((data_particle, copy.copy(self._read_state)))
+                result_particles.append(data_particle)
                
             if test_tide != None:
                 # Extract the data record particle
@@ -501,7 +487,7 @@ class PresfAbcDclParser(BufferLoadingParser):
                                                      None,
                                                      chunk,
                                                      None)
-                result_particles.append((data_particle, copy.copy(self._read_state)))
+                result_particles.append(data_particle)
 
             # Retrieve the next non data chunk
             (nd_timestamp, non_data, non_start, non_end) = self._chunker.get_next_non_data_with_index(clean=False)
@@ -529,9 +515,6 @@ class PresfAbcDclParser(BufferLoadingParser):
                                          StateKey.POSITION)
 
         self._record_buffer = []
-        self._state = state_obj
-        self._read_state = state_obj
-
         self.input_file.seek(state_obj[StateKey.POSITION])
 
 
