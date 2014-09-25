@@ -161,7 +161,8 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
         particles = parser.get_records(1)
         log.debug("*** test_simple Num particles %s", len(particles))
 
-
+	print particles
+	
         for expected in EXPECTED_FILE2:
             # Generate expected particle
             expected_particle = PresfAbcDclRecoveredTideDataParticle(expected)
