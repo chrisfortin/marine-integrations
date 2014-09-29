@@ -225,7 +225,6 @@ class PresfAbcDclParserTideDataParticle(DataParticle):
         # The individual fields have already been extracted by the parser.
         
         tide_match = TIDE_MATCHER.match(raw_data)
-       
         timestamp = (
             int(tide_match.group(TIDE_GROUP_YEAR)),
             int(tide_match.group(TIDE_GROUP_MONTH)),

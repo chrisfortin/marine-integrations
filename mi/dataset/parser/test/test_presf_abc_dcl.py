@@ -6,38 +6,11 @@
 @author Christopher Fortin
 @brief Test code for a presf_abc_dcl data parser
 
-Files used for testing:
-
-20140417.presf1.log
-  Metadata - 1 set,  Sensor Data - 0 records
-
-20140417.presf2.log
-  Metadata - 1 set,  Tide Data - 1 record
-
-20140417.presf2.log
-  Metadata - 4 sets,  Sensor Data - 13 records
-
-20140417.presf2.log
-  Metadata - 5 sets,  Sensor Data - 5 records
-
-20140417.presf2.log
-  Metadata - 4 sets,  Sensor Data - 6 records
-
-20140417.presf2.log
-  Metadata - 1 set,  Sensor Data - 300 records
-
-20140417.presf2.log
-  Metadata - 2 sets,  Sensor Data - 200 records
-
-20140417.presf2.log
-  This file contains a boatload of invalid sensor data records.
-  See metadata in file for a list of the errors.
-  20 metadata records, 47 sensor data records
-
-
 """
 
 import os
+import ntplib
+
 from nose.plugins.attrib import attr
 
 from mi.idk.config import Config
@@ -58,6 +31,7 @@ from mi.dataset.parser.presf_abc_dcl import \
     DataTypeKey, \
     TIDE_PARTICLE_CLASS_KEY, \
     WAVE_PARTICLE_CLASS_KEY, \
+    TIDE_MATCHER, \
     PresfAbcDclParser
 
 
@@ -68,23 +42,6 @@ RESOURCE_PATH = os.path.join(Config().base_dir(), 'mi',
 
 MODULE_NAME = 'mi.dataset.parser.presf_abc_dcl'
 
-
-# file 1: just a starting metadata block
-FILE1 = '20140417.presf1.log'
-# file 2: metadata and a single TIDE sample
-FILE2 = '20140417.presf2.log'
-# file 3:  3x(meta, tide, wave)
-FILE3 = '20140417.presf3.log'
-FILE4 = '20140417.presf4.log'
-FILE5 = '20140417.presf5.log'
-FILE6 = '20140417.presf6.log'
-FILE7 = '20140417.presf7.log'
-FILE8 = '20140417.presf8.log'
-
-
-RECORDS_FILE6 = 300      # number of records expected
-RECORDS_FILE7 = 400      # number of records expected
-EXCEPTIONS_FILE8 = 47    # number of exceptions expected
 
 
 
@@ -136,6 +93,48 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
             },
 	}
 
+
+	# Telemetered test data
+	
+        posix_time = int('51EC763C', 16)
+        self._timestamp1 = ntplib.system_to_ntp_time(float(posix_time))
+        self.particle_t1 = PresfAbcDclTelemeteredTideDataParticle( \
+            '2014/04/17 17:59:11.323 tide: start time = 17 Apr 2014 17:00:00, p = 14.6612, pt = 11.380, t = 11.5248\r\n', \
+            internal_timestamp=self._timestamp1)
+
+
+        posix_time = int('51EC763C', 16)
+        self._timestamp2 = ntplib.system_to_ntp_time(float(posix_time))
+        self.particle_w1 = PresfAbcDclTelemeteredWaveDataParticle( \
+            '2014/04/17 17:59:12.334 wave: start time = 17 Apr 2014 17:59:17\r\n' \
+	    '2014/04/17 17:59:12.362 wave: ptfreq = 171226.968\r\n' \
+	    '2014/04/17 17:59:12.878   14.6498\r\n' \
+	    '2014/04/17 17:59:13.128   14.6482\r\n' \
+	    '2014/04/17 17:59:13.378   14.6482\r\n' \
+	    '2014/04/17 17:59:13.628   14.6482\r\n' \
+	    '2014/04/17 17:59:13.878   14.6511\r\n' \
+	    '2014/04/17 17:59:14.128   14.6511\r\n' \
+	    '2014/04/17 17:59:14.378   14.6566\r\n' \
+	    '2014/04/17 17:59:14.628   14.6538\r\n' \
+	    '2014/04/17 17:59:14.878   14.6566\r\n' \
+	    '2014/04/17 17:59:15.128   14.6566\r\n' \
+	    '2014/04/17 17:59:15.378   14.6544\r\n' \
+	    '2014/04/17 17:59:15.628   14.6544\r\n' \
+	    '2014/04/17 17:59:15.878   14.6490\r\n' \
+	    '2014/04/17 17:59:16.128   14.6462\r\n' \
+	    '2014/04/17 17:59:16.378   14.6407\r\n' \
+	    '2014/04/17 17:59:16.628   14.6352\r\n' \
+	    '2014/04/17 17:59:16.878   14.6297\r\n' \
+	    '2014/04/17 17:59:17.128   14.6270\r\n' \
+	    '2014/04/17 17:59:17.378   14.6270\r\n' \
+	    '2014/04/17 17:59:17.628   14.6324\r\n' \
+	    '2014/04/17 17:59:17.666 wave: end burst\r\n', \
+            internal_timestamp=self._timestamp2)
+
+
+
+
+
         self.file_ingested_value = None
         self.state_callback_value = None
         self.publish_callback_value = None
@@ -151,7 +150,7 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
         one at a time. Verify that the results are those we expected.
         """
         log.debug('===== START TEST SIMPLE RECOVERED =====')
-        in_file = self.open_file(FILE3)
+        in_file = self.open_file('20140417.presf3.log')
 
         parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_RECOVERED),
                                   None, in_file,
@@ -159,17 +158,14 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
                                   self.exception_callback)
 
         particles = parser.get_records(1)
-        log.debug("*** test_simple Num particles %s", len(particles))
-
 	print particles
 	
-        for expected in EXPECTED_FILE2:
-            # Generate expected particle
-            expected_particle = PresfAbcDclRecoveredTideDataParticle(expected)
-
-            # Get record and verify.
-            result = parser.get_records(1)
-            self.assertEqual(result, [expected_particle])
+	# file has one tide particle and one wave particle
+        result = parser.get_records(1)
+        self.assertEqual(result, [self.particle_t1])
+	
+        result = parser.get_records(1)
+        self.assertEqual(result, [self.particle_w1])
 
         self.assertEqual(self.rec_exception_callback_value, None)
         in_file.close()
