@@ -353,7 +353,7 @@ class PresfAbcDclParserWaveDataParticle(DataParticle):
                         ptemp_frequency, float))
         result.append(self._encode_value(PresfAbcDclWaveParticleKey.ABSOLUTE_PRESSURE_BURST,
                         absolute_pressure_burst, list))
-
+        
         return result     
 
 class PresfAbcDclRecoveredTideDataParticle(PresfAbcDclParserTideDataParticle):
@@ -477,8 +477,8 @@ class PresfAbcDclParser(BufferLoadingParser):
                                                      None,
                                                      chunk,
                                                      None)
-                result_particles.append(data_particle)
-               
+                result_particles.append((data_particle,None))
+                    
             if test_tide != None:
                 # Extract the data record particle
                 log.debug('Tide data record')
@@ -486,7 +486,8 @@ class PresfAbcDclParser(BufferLoadingParser):
                                                      None,
                                                      chunk,
                                                      None)
-                result_particles.append(data_particle)
+                result_particles.append((data_particle,None))
+
 
             # Retrieve the next non data chunk
             (nd_timestamp, non_data, non_start, non_end) = self._chunker.get_next_non_data_with_index(clean=False)
@@ -499,23 +500,6 @@ class PresfAbcDclParser(BufferLoadingParser):
 
         return result_particles
         
-        
-    def set_state(self, state_obj):
-        """
-        Set the value of the state object for this parser
-        @param state_obj The object to set the state to.
-        @throws DatasetParserException if there is a bad state structure
-        """
-        if not isinstance(state_obj, dict):
-            raise DatasetParserException("Invalid state structure")
-
-        if not (StateKey.POSITION in state_obj):
-            raise DatasetParserException('%s missing in state keys' %
-                                         StateKey.POSITION)
-
-        self._record_buffer = []
-        self.input_file.seek(state_obj[StateKey.POSITION])
-
 
     def sieve_function(self, raw_data):
         """
