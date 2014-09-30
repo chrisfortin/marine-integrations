@@ -4,7 +4,7 @@ header:
 
 data:
   - _index: 1
-    particle_object: PresfAbcDclParserTideDataParticle
+    particle_object: PresfAbcDclTelemeteredTideDataParticle
     particle_type: presf_abc_dcl_tide_measurement
     internal_timestamp: 3583825326.0
     dcl_controller_timestamp: 1374837724

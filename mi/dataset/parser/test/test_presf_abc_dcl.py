@@ -62,7 +62,9 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
 
     def exception_callback(self, exception):
         """ Callback method to watch what comes in via the exception callback """
+	log.debug(exception)
         self.exception_callback_value = exception
+	self._exception_occurred = True
         self.count += 1
 
     def open_file(self, filename):
@@ -72,8 +74,10 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
     def setUp(self):
         ParserUnitTestCase.setUp(self)
 
-        self.config = {
-            DataTypeKey.PREFS_ABS_DCL_TELEMETERED: {
+        self._exception_occurred = False
+	
+	self.config = {
+            DataTypeKey.PRESF_ABC_DCL_TELEMETERED: {
                 DataSetDriverConfigKeys.PARTICLE_MODULE: MODULE_NAME,
                 DataSetDriverConfigKeys.PARTICLE_CLASS: None,
                 DataSetDriverConfigKeys.PARTICLE_CLASSES_DICT: {
@@ -104,34 +108,40 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
         Read data from a file and pull out data particles
         one at a time. Verify that the results are those we expected.
         """
-        log.debug('===== START TEST SIMPLE RECOVERED =====')
-        in_file = self.open_file('20140417.presf3.log')
+        log.debug('===== START TEST SIMPLE =====')
 
-        parser = PresfAbcDclParser(self.config.get(DataTypeKey.PREFS_ABS_DCL_TELEMETERED),
-                                  None, in_file,
-                                  self.state_callback, self.pub_callback,
-                                  self.exception_callback)
-	
-	# file has one tide particle and one wave particle
-        particles = parser.get_records(2)
-	
-        # Close the file stream as we don't need it anymore
-        in_file.close()
+        with open(os.path.join(RESOURCE_PATH, '20140417.presf3.log'), 'r') as file_handle:
 
-        # Make sure we obtained 2 particles
-        self.assertTrue(len(particles) == 2)
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_TELEMETERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+	    
+	    # file has one tide particle and one wave particle
+	    particles = parser.get_records(2)
+	        
+	    # Make sure we obtained 2 particles
+	    self.assertTrue(len(particles) == 2)
+       
+	    self.assert_particles(particles, '20140417.presf3_telem.yml', RESOURCE_PATH)
 
-	# Obtain the expected 5 samples from a yml file
-        test_data = self.get_dict_from_yml('20140417.presf3.yml')
 
-        index = 0
-        for particle in particles:
-            log.info(particle.generate_dict())
+        with open(os.path.join(RESOURCE_PATH, '20140417.presf3.log'), 'r') as file_handle:
 
-            # Make sure each retrieved sample matches its expected result
-            self.assert_result(test_data['data'][index], particles[index])
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_RECOVERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+	    
+	    # file has one tide particle and one wave particle
+	    particles = parser.get_records(2)
+	        
+	    # Make sure we obtained 2 particles
+	    self.assertTrue(len(particles) == 2)
+       
+	    self.assert_particles(particles, '20140417.presf3_recov.yml', RESOURCE_PATH)
 
-            index += 1
+        log.debug('===== END TEST SIMPLE =====')
 
     def test_get_many(self):
         """
@@ -140,114 +150,171 @@ class PresfAbcDclParserUnitTestCase(ParserUnitTestCase):
         """
 
         log.debug('===== START TEST MANY =====')
-        in_file = self.open_file('20140105_trim.presf.log')
+        with open(os.path.join(RESOURCE_PATH, '20140105_trim.presf.log'), 'r') as file_handle:
 
-        parser = PresfAbcDclParser(self.config.get(DataTypeKey.PREFS_ABS_DCL_TELEMETERED),
-                                  None, in_file,
-                                  self.state_callback, self.pub_callback,
-                                  self.exception_callback)
-	
-        particles = parser.get_records(20)
-	
-        # Close the file stream as we don't need it anymore
-        in_file.close()
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_TELEMETERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+	    
+	    particles = parser.get_records(20)
+	        
+	    # Make sure we obtained 20 particles
+	    self.assertTrue(len(particles) == 20)
+    
+            self.assert_particles(particles, "20140105_trim.presf_telem.yml", RESOURCE_PATH)
 
-        # Make sure we obtained 20 particles
-        self.assertTrue(len(particles) == 20)
+        with open(os.path.join(RESOURCE_PATH, '20140105_trim.presf.log'), 'r') as file_handle:
 
-	# Obtain the expected 5 samples from a yml file
-        test_data = self.get_dict_from_yml('20140105_trim.presf.yml')
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_RECOVERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+	    
+	    particles = parser.get_records(20)
+	        
+	    # Make sure we obtained 20 particles
+	    self.assertTrue(len(particles) == 20)
+    
+            self.assert_particles(particles, "20140105_trim.presf_recov.yml", RESOURCE_PATH)
 
-        index = 0
-        for particle in particles:
-            log.info(particle.generate_dict())
 
-            # Make sure each retrieved sample matches its expected result
-            self.assert_result(test_data['data'][index], particles[index])
-
-            index += 1
+        log.debug('===== END TEST MANY =====')
 
     def test_long_stream(self):
         """
         Test a long stream
         """
-        in_file = self.open_file('20140105.presf.log')
+        log.debug('===== START TEST LONG STREAM =====')
+        with open(os.path.join(RESOURCE_PATH, '20140105.presf.log'), 'r') as file_handle:
 
-        parser = PresfAbcDclParser(self.config.get(DataTypeKey.PREFS_ABS_DCL_TELEMETERED),
-                                  None, in_file,
-                                  self.state_callback, self.pub_callback,
-                                  self.exception_callback)
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_TELEMETERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+    
+	    particles = parser.get_records(48)
+	        
+	    # Make sure we obtained 20 particles
+	    self.assertTrue(len(particles) == 48)
 
-        particles = parser.get_records(48)
-	
-        # Close the file stream as we don't need it anymore
-        in_file.close()
+        log.debug('===== END TEST LONG STREAM =====')
 
-        # Make sure we obtained 20 particles
-        self.assertTrue(len(particles) == 48)
-
-
-
-
-
-    def get_dict_from_yml(self, filename):
+    def test_invalid_tide_record(self):
         """
-        This utility routine loads the contents of a yml file
-        into a dictionary
+        The file used here has a damaged tide record ( the p = $$$ is replaced by a q = $$$ )
         """
+        log.debug('===== START TEST INVALID TIDE RECORD =====')
 
-        fid = open(os.path.join(RESOURCE_PATH, filename), 'r')
-        result = yaml.load(fid)
-        fid.close()
+        with open(os.path.join(RESOURCE_PATH, '20140105_invts.presf.log'), 'r') as file_handle:
 
-        return result
+            NUM_PARTICLES_TO_REQUEST = 20
+            NUM_EXPECTED_PARTICLES = 19
 
-    def assert_result(self, test, particle):
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_TELEMETERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+
+            particles = parser.get_records(NUM_PARTICLES_TO_REQUEST)
+
+            self.assertEquals(len(particles), NUM_EXPECTED_PARTICLES)
+
+            self.assert_particles(particles, "20140105_invts.presf_telem.yml", RESOURCE_PATH)
+
+            self.assertEqual(self._exception_occurred, True)
+
+ 
+        with open(os.path.join(RESOURCE_PATH, '20140105_invts.presf.log'), 'r') as file_handle:
+
+            NUM_PARTICLES_TO_REQUEST = 20
+            NUM_EXPECTED_PARTICLES = 19
+
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_RECOVERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+
+            particles = parser.get_records(NUM_PARTICLES_TO_REQUEST)
+
+            self.assertEquals(len(particles), NUM_EXPECTED_PARTICLES)
+
+            self.assert_particles(particles, "20140105_invts.presf_recov.yml", RESOURCE_PATH)
+
+            self.assertEqual(self._exception_occurred, True)
+
+        log.debug('===== END TEST INVALID TIDE RECORD =====')
+
+    def test_invalid_wave_record(self):
         """
-        Suite of tests to run against each returned particle and expected
-        results of the same.  The test parameter should be a dictionary
-        that contains the keys to be tested in the particle
-        the 'internal_timestamp' and 'position' keys are
-        treated differently than others but can be verified if supplied
+        Two of the wave records in this file are damaged.  The first is missing the pt subrecord,
+	and the second is missing the termination of the wave record.
         """
+        log.debug('===== START TEST INVALID WAVE RECORD =====')
 
-        particle_dict = particle.generate_dict()
+        with open(os.path.join(RESOURCE_PATH, '20140105_invwv.presf.log'), 'r') as file_handle:
 
-        log.info(particle_dict)
+            NUM_PARTICLES_TO_REQUEST = 20
+            NUM_EXPECTED_PARTICLES = 18
 
-        #for efficiency turn the particle values list of dictionaries into a dictionary
-        particle_values = {}
-        for param in particle_dict.get('values'):
-            particle_values[param['value_id']] = param['value']
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_TELEMETERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
 
-        # compare each key in the test to the data in the particle
-        for key in test:
+            particles = parser.get_records(NUM_PARTICLES_TO_REQUEST)
+	    
+            self.assertEquals(len(particles), NUM_EXPECTED_PARTICLES)
 
-            log.info("key: %s", key)
+            self.assert_particles(particles, "20140105_invwv.presf_telem.yml", RESOURCE_PATH)
 
-            test_data = test[key]
+            self.assertEqual(self._exception_occurred, True)
 
-            #get the correct data to compare to the test
-            if key == 'internal_timestamp':
-                particle_data = particle.get_value('internal_timestamp')
-                #the timestamp is in the header part of the particle
+ 
+        with open(os.path.join(RESOURCE_PATH, '20140105_invwv.presf.log'), 'r') as file_handle:
 
-                log.info("internal_timestamp %d", particle_data)
+            NUM_PARTICLES_TO_REQUEST = 20
+            NUM_EXPECTED_PARTICLES = 18
 
-            else:
-                particle_data = particle_values.get(key)
-                #others are all part of the parsed values part of the particle
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_RECOVERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
 
-            if particle_data is None:
-                #generally OK to ignore index keys in the test data, verify others
+            particles = parser.get_records(NUM_PARTICLES_TO_REQUEST)
 
-                log.warning("\nWarning: assert_result ignoring test key %s, does not exist in particle", key)
-            else:
-                log.info("test_data %s - particle_data %s", test_data, particle_data)
-                if isinstance(test_data, float):
-                    # slightly different test for these values as they are floats.
-                    compare = numpy.abs(test_data - particle_data) <= 1e-5
-                    self.assertTrue(compare)
-                else:
-                    # otherwise they are all ints and should be exactly equal
-                    self.assertEqual(test_data, particle_data)
+            self.assertEquals(len(particles), NUM_EXPECTED_PARTICLES)
+
+            self.assert_particles(particles, "20140105_invwv.presf_recov.yml", RESOURCE_PATH)
+
+            self.assertEqual(self._exception_occurred, True)
+
+        log.debug('===== END TEST INVALID TIDE RECORD =====')
+
+    def test_no_particles(self):
+        """
+        Verify that no particles are produced if the input file
+        has no instrument records.
+        """
+        log.debug('===== START TEST NO PARTICLES =====')
+
+        with open(os.path.join(RESOURCE_PATH, '20140417.presf1.log'), 'r') as file_handle:
+
+            NUM_PARTICLES_TO_REQUEST = 10
+            NUM_EXPECTED_PARTICLES = 0
+
+	    parser = PresfAbcDclParser(self.config.get(DataTypeKey.PRESF_ABC_DCL_TELEMETERED),
+				      None, file_handle,
+				      self.state_callback, self.pub_callback,
+				      self.exception_callback)
+
+            particles = parser.get_records(NUM_PARTICLES_TO_REQUEST)
+
+            self.assertEquals(len(particles), NUM_EXPECTED_PARTICLES)
+
+            self.assertEqual(self._exception_occurred, False)
+
+        log.debug('===== END TEST NO PARTICLES =====')
+
+
+
